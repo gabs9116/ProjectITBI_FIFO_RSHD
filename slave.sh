@@ -1,0 +1,30 @@
+#!/bin/bash
+
+SLAVE_ID="$1"
+SLAVE_DIR="$2"
+
+MY_FIFO="$SLAVE_DIR/slave_$SLAVE_ID"
+if [ -p "$MY_FIFO" ]; then
+    rm "$MY_FIFO"
+fi
+
+mkfifo "$MY_FIFO"
+echo "Slave $SLAVE_ID initialized. Waiting commands from $MY_FIFO"
+
+while true; do
+
+    IFS='|' read -r COMMAND REPLY_FIFO < "$MY_FIFO"
+    if [ -z "$COMMAND" ] || [ -z "$REPLY_FIFO" ]; then
+        continue
+    fi
+
+    echo "[slave] Slave $SLAVE_ID running command: '$COMMAND'"
+    echo "[slave] Slave $SLAVE_ID: output sent to $REPLY_FIFO"
+    
+    if [ -p "$REPLY_FIFO" ]; then
+            eval "$COMMAND" > "$REPLY_FIFO" 2>&1
+    else
+            echo "[slave] Slave $SLAVE_ID Error: Client FIFO not found ($REPLY_FIFO)"
+    fi
+
+done
